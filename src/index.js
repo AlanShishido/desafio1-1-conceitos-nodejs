@@ -15,10 +15,24 @@ function checksExistsUserAccount(request, response, next) {
   const user = users.find((user) => user.username === username)
 
   if (!user){
-    return response.status(400).json({ message : "user not found"});
+    return response.status(400).json({ error : "user not found"});
   }
 
   request.user = user;
+
+  return next();
+}
+
+function checksExistsToDoID(request, response, next){
+  const { id } = request.params;
+  const { user } = request;
+  const todo = user.todos.find((todo) => todo.id === id);
+
+  if(!todo){
+    return response.status(400).json({error: "ID not found"});
+  }
+
+  request.todo = todo;
 
   return next();
 }
@@ -51,6 +65,7 @@ app.post('/todos', checksExistsUserAccount, (request, response) => {
   const todo = {
     id: uuidv4(),
     title,
+    done: false,
     deadline: new Date(deadline),
     created_at: new Date()
   }
@@ -60,16 +75,9 @@ app.post('/todos', checksExistsUserAccount, (request, response) => {
   return response.status(201).json(todo);
 });
 
-app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
-  const { id } = request.params;
+app.put('/todos/:id', checksExistsUserAccount, checksExistsToDoID, (request, response) => {
   const { title, deadline } = request.body;
-  const { user } = request;
-
-  const todo = user.todos.find((todo) => todo.id === id)
-
-  if(!todo){
-    return response.status(400).json({message: "ID not found"});
-  }
+  const { todo } = request;
 
   todo.title = title;
   todo.deadline = new Date(deadline);
@@ -77,12 +85,21 @@ app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
   return response.status(200).send();
 });
 
-app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+app.patch('/todos/:id/done', checksExistsUserAccount, checksExistsToDoID, (request, response) => {
+  const { todo } = request;
+
+  todo.done = true;
+
+  return response.status(200).send()
+
 });
 
-app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+app.delete('/todos/:id', checksExistsUserAccount, checksExistsToDoID, (request, response) => {
+  const { user, todo } = request;
+
+  user.todos.splice(todo, 1);
+
+  return response.status(200).json(todo);
 });
 
 module.exports = app;
